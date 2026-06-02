@@ -304,14 +304,28 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
         <div style="font-size:14px;font-weight:800;">💺 현재 좌석 현황</div>
         <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;" id="seatCount2"></div>
       </div>
-      <!-- 좌석 격자 24개 -->
-      <div id="seatGrid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;"></div>
-      <div style="display:flex;gap:12px;margin-top:12px;">
-        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);">
-          <div style="width:12px;height:12px;border-radius:3px;background:#10B98122;border:1.5px solid #10B98166;"></div>빈 좌석
-        </div>
-        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);">
-          <div style="width:12px;height:12px;border-radius:3px;background:var(--blue);"></div>탑승 중
+
+      <!-- 버스 배치도 -->
+      <div style="background:#F8FAFF;border-radius:12px;padding:14px;border:1.5px solid var(--border);">
+
+        <!-- 버스 앞쪽 표시 -->
+        <div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;">🚪 앞문</div>
+
+        <!-- 좌석 배치: 2 | 통로 | 1 | 1 -->
+        <!-- 행 1~6, 각 행: 왼쪽2 + 통로 + 오른쪽(3번째=접이식) + 4번째 -->
+        <div id="seatLayout" style="display:flex;flex-direction:column;gap:6px;align-items:center;"></div>
+
+        <!-- 범례 -->
+        <div style="display:flex;gap:12px;margin-top:12px;justify-content:center;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);">
+            <div style="width:14px;height:14px;border-radius:3px;background:#10B98122;border:1.5px solid #10B98166;"></div>빈 좌석
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);">
+            <div style="width:14px;height:14px;border-radius:3px;background:var(--blue);"></div>탑승 중
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);">
+            <div style="width:14px;height:14px;border-radius:3px;background:#0D9488;border:1.5px solid #0D9488;"></div>접이식
+          </div>
         </div>
       </div>
     </div>
@@ -546,21 +560,11 @@ function updateSeatUI() {
     else bs.textContent = `운행 중 · 잔여 ${remain}석`;
   }
 
-  const grid = document.getElementById('seatGrid');
-  if (grid) {
-    grid.innerHTML = '';
-    for (let i = 0; i < TOTAL_SEATS; i++) {
-      const sq = document.createElement('div');
-      sq.style.cssText = `aspect-ratio:1;border-radius:5px;border:1.5px solid;` +
-        (i < takenSeats
-          ? 'background:#1D4ED8;border-color:#1D4ED8;'
-          : `background:${color}22;border-color:${color}66;`);
-      grid.appendChild(sq);
-    }
-  }
-
   const sc2 = document.getElementById('seatCount2');
   if (sc2) { sc2.textContent = remain + ' / ' + TOTAL_SEATS + '석'; sc2.style.color = color; }
+
+  // 실제 버스 배치도
+  renderSeatLayout(takenSeats);
 }
 
 // ── 좌석 API 폴링 ──
@@ -581,7 +585,78 @@ async function fetchSeats() {
   }
 }
 
-// ── GPS API 폴링 ──
+// 좌석 배치: 6행 × [좌1, 좌2, 통로, 우1(접이식), 우2]
+// 총 24석: 6행 × 4석
+// 3번째 열(index 2, 우1)이 접이식
+const SEAT_ROWS = 6;
+// 각 행: [좌1, 좌2, 통로, 우1접이식, 우2]
+// 좌석 번호 순서: 행별로 좌1→좌2→우1→우2 = 4석/행 × 6행 = 24석
+
+function renderSeatLayout(taken) {
+  const layout = document.getElementById('seatLayout');
+  if (!layout) return;
+  layout.innerHTML = '';
+
+  const ss = 'width:34px;height:34px;border-radius:6px;border:2px solid;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;';
+  const aisle = () => { const d = document.createElement('div'); d.style.cssText='width:18px;'; return d; };
+
+  // 실제 배치: [좌석배열] null=통로 'f'=접이식
+  // 1열: 1석 (우측1)
+  // 2열: 좌2 통로 우2
+  // 3열: 좌2 통로 우1
+  // 4열: 좌2 통로 접이식 우1
+  // 5열: 좌2 통로 우2
+  // 6열: 좌2 통로 우2
+  // 7열: 좌2 통로 우2
+  const rows = [
+    [null, null, null, false],           // 1열: 우측 1석
+    [false, false, null, false, false],  // 2열: 좌2 우2
+    [false, false, null, false],         // 3열: 좌2 우1
+    [false, false, null, true, false],   // 4열: 좌2 접이식 우1
+    [false, false, null, false, false],  // 5열: 좌2 우2
+    [false, false, null, false, false],  // 6열: 좌2 우2
+    [false, false, null, false, false],  // 7열: 좌2 우2
+  ];
+
+  let seatIdx = 0;
+
+  rows.forEach((row, ri) => {
+    const rowEl = document.createElement('div');
+    rowEl.style.cssText = 'display:flex;gap:6px;align-items:center;justify-content:center;width:100%;';
+
+    // 1열은 문 표시
+    if (ri === 0) {
+      const door = document.createElement('div');
+      door.style.cssText = 'font-size:18px;margin-right:4px;';
+      door.textContent = '🚪';
+      rowEl.appendChild(door);
+    }
+
+    row.forEach(s => {
+      if (s === null) { rowEl.appendChild(aisle()); return; }
+      if (s === 'skip') { const sp = document.createElement('div'); sp.style.cssText='width:34px;height:34px;'; rowEl.appendChild(sp); return; }
+
+      const isTaken = seatIdx < taken;
+      const isFold = s === true;
+      const seat = document.createElement('div');
+      let bg, border, color;
+      if (isTaken) {
+        bg = '#1D4ED8'; border = '#1D4ED8'; color = '#fff';
+      } else if (isFold) {
+        bg = 'rgba(13,148,136,0.15)'; border = '#0D9488'; color = '#0D9488';
+      } else {
+        bg = 'rgba(16,185,129,0.12)'; border = 'rgba(16,185,129,0.4)'; color = '#059669';
+      }
+      seat.style.cssText = ss + `background:${bg};border-color:${border};color:${color};`;
+      seat.textContent = seatIdx + 1;
+      rowEl.appendChild(seat);
+      seatIdx++;
+    });
+
+    layout.appendChild(rowEl);
+  });
+}
+
 // API.GPS_URL 이 있으면 서버에서 실제 위치, 없으면 경로 따라 시뮬레이션
 let gpsSimT = 0;
 async function fetchGPS() {
