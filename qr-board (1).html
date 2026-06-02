@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>탑승 체크</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #0B1F4B; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
+.card { background:#fff; border-radius:24px; padding:40px 32px; text-align:center; max-width:320px; width:100%; }
+.icon { font-size:64px; margin-bottom:16px; }
+.title { font-size:24px; font-weight:900; color:#0B1F4B; margin-bottom:8px; }
+.sub { font-size:14px; color:#64748B; margin-bottom:32px; }
+.btn { width:100%; padding:16px; border:none; border-radius:14px; font-size:18px; font-weight:700; cursor:pointer; margin-bottom:12px; }
+.btn-board { background:#10B981; color:#fff; }
+.btn-exit { background:#EF4444; color:#fff; }
+.result { margin-top:20px; padding:14px; border-radius:12px; font-size:15px; font-weight:700; display:none; }
+.result.success { background:#D1FAE5; color:#065F46; }
+.result.error { background:#FEE2E2; color:#991B1B; }
+.seat-info { font-size:13px; color:#64748B; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">🚌</div>
+  <div class="title">창원대 셔틀버스</div>
+  <div class="sub">탑승 또는 하차 버튼을 눌러주세요</div>
+  <button class="btn btn-board" onclick="check('board')">탑승</button>
+  <button class="btn btn-exit" onclick="check('exit')">하차</button>
+  <div class="result" id="result"></div>
+  <div class="seat-info" id="seatInfo"></div>
+</div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbwFKgwT25eH2UE-zVtlrX7nidXGQgNp1_cpO-9jWrIjJrd1Uvs_iAAvWKFrjc3K7-jPmQ/exec';
+
+// 구글 폼 직접 제출
+const FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfOP_LdozNw2jtpDzd_4TjmaoIYxL8rS9dDJcm9q-XuDooZVw/formResponse';
+
+async function check(action) {
+  const result = document.getElementById('result');
+  const seatInfo = document.getElementById('seatInfo');
+  result.style.display = 'block';
+  result.className = 'result';
+  result.textContent = '처리 중...';
+
+  try {
+    // 폼 제출 (탑승/하차 기록)
+    const label = action === 'board' ? '탑승' : '하차';
+    const formData = new FormData();
+    formData.append('entry.2016907440', label);
+
+    await fetch(FORM_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: formData
+    });
+
+    // 잔여좌석 조회
+    const res = await fetch(API);
+    const data = await res.json();
+    const remain = data.total - data.taken;
+
+    result.className = 'result success';
+    result.textContent = action === 'board' ? '탑승 완료!' : '하차 완료!';
+    seatInfo.textContent = `잔여 좌석: ${remain} / ${data.total}석`;
+  } catch(e) {
+    result.className = 'result error';
+    result.textContent = '오류 발생. 다시 시도해주세요.';
+  }
+}
+</script>
+</body>
+</html>
