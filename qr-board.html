@@ -33,8 +33,15 @@ body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #0B1F4B; disp
 
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbwFKgwT25eH2UE-zVtlrX7nidXGQgNp1_cpO-9jWrIjJrd1Uvs_iAAvWKFrjc3K7-jPmQ/exec';
+let isProcessing = false;
 
 async function check(action) {
+  if (isProcessing) return;
+  isProcessing = true;
+
+  const btns = document.querySelectorAll('.btn');
+  btns.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+
   const result = document.getElementById('result');
   const seatInfo = document.getElementById('seatInfo');
   result.style.display = 'block';
@@ -48,9 +55,16 @@ async function check(action) {
     result.className = 'result success';
     result.textContent = action === 'board' ? '탑승 완료!' : '하차 완료!';
     seatInfo.textContent = `잔여 좌석: ${remain} / ${data.total}석`;
+    if (remain === 0) {
+      result.textContent = '만석입니다!';
+      result.className = 'result error';
+    }
   } catch(e) {
     result.className = 'result error';
     result.textContent = '오류 발생. 다시 시도해주세요.';
+  } finally {
+    isProcessing = false;
+    btns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
   }
 }
 </script>
