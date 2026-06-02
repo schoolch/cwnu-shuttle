@@ -726,6 +726,8 @@ function checkPassword() {
     alert('비밀번호가 틀렸습니다.');
   }
 }
+
+function resetRoute() {
   if (!confirm('경로 초기화?')) return;
   routePath = null;
   localStorage.removeItem('routePath');
