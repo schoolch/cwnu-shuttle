@@ -216,7 +216,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <!-- 편집 안내바 -->
     <div id="editBar" style="display:none;position:absolute;bottom:0;left:0;right:0;z-index:1000;background:rgba(11,31,75,0.92);padding:10px 16px;align-items:center;justify-content:space-between;gap:8px;">
       <span style="color:#F59E0B;font-size:12px;font-weight:700;flex:1;">마커 드래그로 정류장 이동. 자동으로 도로 경로 계산.</span>
-      <button onclick="document.getElementById('editBar').style.display='none'" style="background:#10B981;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;">완료</button>
+      <button onclick="stopEdit()" style="background:#10B981;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;">완료</button>
       <button onclick="resetRoute()" style="background:#EF4444;color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">초기화</button>
     </div>
     <!-- 편집 버튼 (숨김) -->
@@ -714,7 +714,7 @@ async function renderMap() {
       html: `<div style="background:${s.color};color:#fff;font-size:11px;font-weight:700;padding:4px 9px;border-radius:20px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;font-family:sans-serif;">${s.label}</div>`,
       iconAnchor: [35, 14]
     });
-    const m = L.marker(stopCoords[i], { icon, draggable: true }).addTo(gMap);
+    const m = L.marker(stopCoords[i], { icon, draggable: false }).addTo(gMap);
     m.on('dragend', async () => {
       const ll = m.getLatLng();
       stopCoords[i] = [ll.lat, ll.lng];
@@ -789,10 +789,16 @@ function handleLogoTap() {
 function checkPassword() {
   const pw = prompt('관리자 비밀번호를 입력하세요:');
   if (pw === 'cwnu1234') {
+    stopMarkers.forEach(m => m.dragging.enable());
     document.getElementById('editBar').style.display = 'flex';
   } else if (pw !== null) {
     alert('비밀번호가 틀렸습니다.');
   }
+}
+
+function stopEdit() {
+  stopMarkers.forEach(m => m.dragging.disable());
+  document.getElementById('editBar').style.display = 'none';
 }
 
 function resetRoute() {
