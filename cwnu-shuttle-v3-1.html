@@ -491,6 +491,9 @@ schedule.forEach((s,i) => {
   });
 });
 
+// ── 다국어 ──
+let lang = 'ko';
+
 // Countdown to next bus
 function updateCountdown() {
   const n = getNow();
@@ -818,8 +821,6 @@ function showMyLocation() {
 }
 
 // ── 다국어 (한/영) ──
-let lang = 'ko';
-
 const i18n = {
   ko: {
     live: '실시간', langBtn: 'EN',
