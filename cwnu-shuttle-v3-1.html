@@ -163,18 +163,21 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
         <div class="sb">CWNU Campus Shuttle</div>
       </div>
     </div>
-    <div class="live"><div class="ldot"></div>실시간</div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button onclick="toggleLang()" id="langBtn" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;">EN</button>
+      <div class="live"><div class="ldot"></div><span id="liveText">실시간</span></div>
+    </div>
   </div>
   <div class="nb">
-    <div class="nb-lbl">다음 출발</div>
+    <div class="nb-lbl" id="nextLabelEl">다음 출발</div>
     <div class="nb-row">
       <div class="nb-info">
-        <div class="rn">현 정류장 → 85호관</div>
-        <div class="rs">기숙사앞 출발 · 다음 배차</div>
+        <div class="rn" id="routeNameEl">현 정류장 → 85호관</div>
+        <div class="rs" id="routeSubEl">기숙사앞 출발 · 다음 배차</div>
       </div>
       <div style="text-align:right">
         <div class="cd" id="cd">--:--</div>
-        <div class="cd-lbl">남은 시간</div>
+        <div class="cd-lbl" id="cdLabelEl">남은 시간</div>
       </div>
     </div>
     <div class="stop-badges">
@@ -221,6 +224,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     </div>
     <!-- 편집 버튼 (숨김) -->
     <button id="editBtn" onclick="checkPassword()" style="display:none;position:absolute;top:10px;right:10px;z-index:1000;background:#0B1F4B;color:#fff;border:none;border-radius:10px;padding:7px 13px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);">정류장 편집</button>
+    <!-- 내 위치 버튼 -->
+    <button onclick="showMyLocation()" style="position:absolute;bottom:10px;right:10px;z-index:1000;background:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:20px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;">📍</button>
   </div>
 
   <!-- Bus chip -->
@@ -306,7 +311,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   <div style="padding:16px;">
     <div style="background:var(--card);border:1.5px solid var(--border);border-radius:16px;padding:16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="font-size:15px;font-weight:800;">💺 현재 좌석 현황</div>
+        <div style="font-size:15px;font-weight:800;" id="seatTitleEl">💺 현재 좌석 현황</div>
         <div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:700;" id="seatCount2"></div>
       </div>
       <!-- 버스 배치도 -->
@@ -788,7 +793,88 @@ function initMap() {
   renderMap();
 }
 
-let tapCount = 0;
+// ── 내 위치 표시 ──
+let myMarker = null;
+function showMyLocation() {
+  if (!navigator.geolocation) {
+    alert('이 브라우저는 위치 서비스를 지원하지 않습니다.');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    if (myMarker) gMap.removeLayer(myMarker);
+    const icon = L.divIcon({
+      className: '',
+      html: '<div style="width:14px;height:14px;background:#3B82F6;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 3px rgba(59,130,246,0.4);"></div>',
+      iconAnchor: [7, 7]
+    });
+    myMarker = L.marker([lat, lng], { icon }).addTo(gMap);
+    myMarker.bindPopup(lang === 'ko' ? '📍 내 위치' : '📍 My Location').openPopup();
+    gMap.setView([lat, lng], 16);
+  }, () => {
+    alert(lang === 'ko' ? '위치를 가져올 수 없습니다.' : 'Unable to get location.');
+  });
+}
+
+// ── 다국어 (한/영) ──
+let lang = 'ko';
+
+const i18n = {
+  ko: {
+    live: '실시간', langBtn: 'EN',
+    nextLabel: '다음 출발', routeName: '현 정류장 → 85호관', routeSub: '기숙사앞 출발 · 다음 배차',
+    cdLabel: '남은 시간', done: '종료',
+    stop1: '기숙사앞', stop2: 'COSS', stop3: '85호관',
+    seatLabel: '잔여좌석',
+    tabMap: '위치', tabTime: '시간표', tabSeat: '좌석', tabRoute: '경로',
+    seatTitle: '현재 좌석 현황',
+    boardingStatus: (r) => r === 0 ? '만석 · 탑승 불가' : r <= 4 ? `마감임박 · 잔여 ${r}석` : `운행 중 · 잔여 ${r}석`,
+  },
+  en: {
+    live: 'Live', langBtn: 'KO',
+    nextLabel: 'Next Departure', routeName: 'Stop → Bldg. 85', routeSub: 'Departs from Dormitory',
+    cdLabel: 'Remaining', done: 'Done',
+    stop1: 'Dormitory', stop2: 'COSS', stop3: 'Bldg. 85',
+    seatLabel: 'Seats',
+    tabMap: 'Map', tabTime: 'Schedule', tabSeat: 'Seats', tabRoute: 'Route',
+    seatTitle: 'Current Seat Status',
+    boardingStatus: (r) => r === 0 ? 'Full · No seats' : r <= 4 ? `Almost full · ${r} left` : `Running · ${r} seats`,
+  }
+};
+
+function toggleLang() {
+  lang = lang === 'ko' ? 'en' : 'ko';
+  applyLang();
+}
+
+function applyLang() {
+  const t = i18n[lang];
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+  set('liveText', t.live);
+  set('langBtn', t.langBtn);
+  set('nextLabelEl', t.nextLabel);
+  set('routeNameEl', t.routeName);
+  set('routeSubEl', t.routeSub);
+  set('cdLabelEl', t.cdLabel);
+  set('seatLabelEl', t.seatLabel);
+  set('seatTitleEl', t.seatTitle);
+
+  // 탭
+  const tabs = document.querySelectorAll('.tab');
+  const tabKeys = ['tabMap', 'tabTime', 'tabSeat', 'tabRoute'];
+  tabs.forEach((tab, i) => {
+    const span = tab.querySelector('span') || tab.childNodes[tab.childNodes.length-1];
+    if (tabKeys[i]) tab.lastChild.textContent = t[tabKeys[i]];
+  });
+
+  // 정류장 배지
+  const stops = document.querySelectorAll('.sbadge span');
+  if (stops[0]) stops[0].textContent = t.stop1;
+  if (stops[1]) stops[1].textContent = t.stop2;
+  if (stops[2]) stops[2].textContent = t.stop3;
+}
 let tapTimer = null;
 
 function handleLogoTap() {
