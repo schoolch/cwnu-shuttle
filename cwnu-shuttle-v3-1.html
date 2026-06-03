@@ -564,38 +564,32 @@ async function fetchSeats() {
   }
 }
 
-// 좌석 배치: 6행 × [좌1, 좌2, 통로, 우1(접이식), 우2]
-// 총 24석: 6행 × 4석
-// 3번째 열(index 2, 우1)이 접이식
-const SEAT_ROWS = 6;
-// 각 행: [좌1, 좌2, 통로, 우1접이식, 우2]
-// 좌석 번호 순서: 행별로 좌1→좌2→우1→우2 = 4석/행 × 6행 = 24석
+// 좌석 배치: 실제 버스 기준
+const SEAT_ROWS = 7;
 
 function renderSeatLayout(taken) {
   const layout = document.getElementById('seatLayout');
   if (!layout) return;
   layout.innerHTML = '';
 
-  const ss = 'width:38px;height:38px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;';
+  const ss = 'width:38px;height:38px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;';
 
-  // 실제 배치 (사진 기준):
-  // 맨 앞: 기사님(좌) + 빈공간 + 1석(우)
-  // 2열: 좌2 + 접이식 + 우1  (문 있는 열)
-  // 3열: 좌2 + 접이식 + (빈)  → 3석
-  // 4열: 좌2 + 접이식 + 우1
-  // 5열: 좌2 + 접이식 + 우1
-  // 6열: 좌2 + 접이식 + 우1
-  // 7열: 좌2 + 우2  (맨 뒤, 접이식 없음)
-
-  // fold=true면 접이식
+  // 배치 (실제 버스 사진 기준)
+  // 1열: 기사님 + 빈칸×2 + 1번
+  // 2열: 2,3,4(접이식),5
+  // 3열: 6,7,8(접이식) + 문
+  // 4열: 9,10,11(접이식),12
+  // 5열: 13,14,15(접이식),16
+  // 6열: 17,18,19(접이식),20
+  // 7열: 21,22,23,24
   const rows = [
-    { seats: [null, null, false], door: true },           // 1열: 우1 + 문
-    { seats: [false, false, true, false], door: false },  // 2열: 좌2 접이식 우1
-    { seats: [false, false, true], door: false },          // 3열: 좌2 접이식
-    { seats: [false, false, true, false], door: false },  // 4열: 좌2 접이식 우1
-    { seats: [false, false, true, false], door: false },  // 5열: 좌2 접이식 우1
-    { seats: [false, false, true, false], door: false },  // 6열: 좌2 접이식 우1
-    { seats: [false, false, false, false], door: false }, // 7열: 좌2 우2
+    { seats: ['driver', 'gap', 'gap', false], door: false },   // 1열
+    { seats: [false, false, true, false], door: false },        // 2열
+    { seats: [false, false, true, 'gap'], door: true },         // 3열 (문)
+    { seats: [false, false, true, false], door: false },        // 4열
+    { seats: [false, false, true, false], door: false },        // 5열
+    { seats: [false, false, true, false], door: false },        // 6열
+    { seats: [false, false, false, false], door: false },       // 7열
   ];
 
   let seatIdx = 0;
@@ -604,46 +598,50 @@ function renderSeatLayout(taken) {
     const rowEl = document.createElement('div');
     rowEl.style.cssText = 'display:flex;gap:7px;align-items:center;justify-content:center;width:100%;';
 
-    row.seats.forEach((s, si) => {
-      if (s === null) {
-        // 빈 공간 (기사님 자리 옆)
-        const sp = document.createElement('div');
-        sp.style.cssText = 'width:38px;height:38px;';
-        if (ri === 0 && si === 0) {
-          sp.style.cssText += 'background:#F1F5F9;border-radius:7px;border:1.5px dashed #CBD5E1;display:flex;align-items:center;justify-content:center;font-size:9px;color:#94A3B8;';
-          sp.textContent = '기사님';
-        }
-        rowEl.appendChild(sp);
+    row.seats.forEach(s => {
+      if (s === 'driver') {
+        const d = document.createElement('div');
+        d.style.cssText = ss + 'background:#F1F5F9;border:1.5px dashed #CBD5E1;color:#94A3B8;font-size:9px;';
+        d.textContent = '기사님';
+        rowEl.appendChild(d);
+        return;
+      }
+      if (s === 'gap') {
+        const g = document.createElement('div');
+        g.style.cssText = 'width:38px;height:38px;flex-shrink:0;';
+        rowEl.appendChild(g);
         return;
       }
 
       const isTaken = seatIdx < taken;
       const isFold = s === true;
       const seat = document.createElement('div');
-
-      let bg, border, color;
+      let style;
       if (isTaken && isFold) {
-        // 접이식 + 탑승중: 파란 배경 + 초록 테두리
-        bg = '#1D4ED8'; border = '2.5px solid #10B981'; color = '#fff';
+        style = 'background:#1D4ED8;border:2.5px solid #10B981;color:#fff;';
       } else if (isTaken) {
-        bg = '#1D4ED8'; border = '2px solid #1D4ED8'; color = '#fff';
+        style = 'background:#1D4ED8;border:2px solid #1D4ED8;color:#fff;';
       } else if (isFold) {
-        bg = 'rgba(16,185,129,0.1)'; border = '2px solid #10B981'; color = '#059669';
+        style = 'background:rgba(16,185,129,0.1);border:2px solid #10B981;color:#059669;';
       } else {
-        bg = 'rgba(59,130,246,0.08)'; border = '2px solid #3B82F6'; color = '#1D4ED8';
+        style = 'background:rgba(59,130,246,0.08);border:2px solid #3B82F6;color:#1D4ED8;';
       }
-      seat.style.cssText = ss + `background:${bg};border:${border};color:${color};`;
+      seat.style.cssText = ss + style;
       seat.textContent = seatIdx + 1;
       rowEl.appendChild(seat);
       seatIdx++;
     });
 
-    // 문 표시 (2열 오른쪽)
+    // 문 이모티콘
     if (row.door) {
       const door = document.createElement('div');
-      door.style.cssText = 'font-size:20px;margin-left:2px;';
+      door.style.cssText = 'font-size:20px;margin-left:2px;flex-shrink:0;';
       door.textContent = '🚪';
       rowEl.appendChild(door);
+    } else {
+      const sp = document.createElement('div');
+      sp.style.cssText = 'width:26px;flex-shrink:0;';
+      rowEl.appendChild(sp);
     }
 
     layout.appendChild(rowEl);
