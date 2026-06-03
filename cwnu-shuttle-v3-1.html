@@ -235,7 +235,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
       <div><div class="cn">창원대 셔틀버스</div><div class="cs" id="busStatus">운행 중 · 현재 이동 중</div></div>
     </div>
     <div style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(16,185,129,.1);border:1.5px solid rgba(16,185,129,.25);border-radius:12px;min-width:max-content;">
-      <span style="font-size:11px;font-weight:700;color:var(--green)">잔여좌석</span>
+      <span id="mapSeatLabel" style="font-size:11px;font-weight:700;color:var(--green)">잔여좌석</span>
       <span style="font-family:'DM Mono',monospace;font-size:16px;font-weight:600;color:var(--green)" id="seatCount">--</span>
       <span style="font-size:11px;color:var(--muted)">/ 24</span>
     </div>
@@ -732,9 +732,12 @@ async function renderMap() {
 
   // 정류장 마커 먼저 표시 (지도 즉시 뜨게)
   stopDefs.forEach((s, i) => {
+    const label = lang === 'en'
+      ? [i18n.en.s1name, i18n.en.s2name, i18n.en.s3name][i]
+      : [i18n.ko.s1name, i18n.ko.s2name, i18n.ko.s3name][i];
     const icon = L.divIcon({
       className: '',
-      html: `<div style="background:${s.color};color:#fff;font-size:11px;font-weight:700;padding:4px 9px;border-radius:20px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;font-family:sans-serif;">${s.label}</div>`,
+      html: `<div style="background:${s.color};color:#fff;font-size:11px;font-weight:700;padding:4px 9px;border-radius:20px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;font-family:sans-serif;">${label}</div>`,
       iconAnchor: [35, 14]
     });
     const m = L.marker(stopCoords[i], { icon, draggable: false }).addTo(gMap);
@@ -918,6 +921,12 @@ function applyLang() {
   if (stops[0]) stops[0].textContent = t.s1name;
   if (stops[1]) stops[1].textContent = t.s2name;
   if (stops[2]) stops[2].textContent = t.s3name;
+
+  set('mapSeatLabel', lang === 'en' ? 'Seats' : '잔여좌석');
+  set('seatTitleEl', t.seatTitle);
+
+  // 지도 마커 라벨 언어 반영
+  if (gMap) renderMap();
 }
 let tapTimer = null;
 
